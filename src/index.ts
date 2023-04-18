@@ -4,10 +4,17 @@ import { Telegraf } from 'telegraf'
 import { message } from 'telegraf/filters'
 import log from './utils/log'
 import { Agent } from './agent'
+import { existsSync, mkdirSync } from 'fs'
+import { downloadVoiceFile, postToWhisper } from './lib/voice'
 
 if (!process.env.TELEGRAM_TOKEN) {
   log('fatal', 'Missing environment variable TELEGRAM_TOKEN.')
   process.exit()
+}
+
+const workDir = './tmp'
+if (!existsSync(workDir)) {
+  mkdirSync(workDir)
 }
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN)
@@ -21,13 +28,8 @@ bot.help((ctx) => {
 })
 
 const agent = new Agent()
-bot.on(message(), async (ctx) => {
-  const text = (ctx.message as any).text
-  if (!text) {
-    ctx.reply("Please send a text message.")
-    return
-  }
-
+bot.on(message('text'), async (ctx) => {
+  const text = ctx.message.text
   log('debug', 'Received:', text)
   await ctx.sendChatAction('typing')
 
@@ -39,6 +41,38 @@ bot.on(message(), async (ctx) => {
     const message = JSON.stringify(error?.response?.data?.error ?? error?.message, null, 2)
     await ctx.reply(`There was an error while processing your message.\n\n<pre>${message}</pre>`, { parse_mode: 'HTML' })
   }
+})
+
+bot.on(message('voice'), async (ctx) => {
+  const voice = ctx.message.voice
+  await ctx.sendChatAction('typing')
+
+  let localFilePath
+  try {
+    localFilePath = await downloadVoiceFile(workDir, voice.file_id, bot)
+    log('debug', 'audio file path', localFilePath)
+  } catch (error) {
+    log('error', error)
+    await ctx.reply('There was an error while downloading the voice file. Maybe ffmpeg is not installed?')
+    return
+  }
+
+  const transcription = await postToWhisper(agent.openai, localFilePath)
+  log('info', 'Received transcript:', transcription)
+  await ctx.reply(`Transcription: ${transcription}`)
+  await ctx.sendChatAction('typing')
+
+  let response
+  try {
+    response = await agent.call(transcription)
+  } catch (error) {
+    log('error', error)
+    await ctx.reply('Whoops! There was an error while talking to OpenAI. See logs for details.')
+    return
+  }
+
+  log('debug', response)
+  await ctx.reply(response)
 })
 
 bot.launch()
