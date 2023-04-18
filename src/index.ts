@@ -3,6 +3,7 @@ dotenv.config()
 import { Telegraf } from 'telegraf'
 import { message } from 'telegraf/filters'
 import log from './utils/log'
+import { Model } from './models/chat'
 
 if (!process.env.TELEGRAM_TOKEN) {
   log('fatal', 'Missing environment variable TELEGRAM_TOKEN.')
@@ -19,6 +20,7 @@ bot.help((ctx) => {
   ctx.reply("I'm a GPT-3.5 language model. I can google and I understand voice messages. Ask me anything")
 })
 
+const model = new Model()
 bot.on(message(), async (ctx) => {
   const text = (ctx.message as any).text
   if (!text) {
@@ -26,8 +28,20 @@ bot.on(message(), async (ctx) => {
     return
   }
 
-  log('debug', "Received:", text)
-  ctx.reply("Received: " + text)
+  log('debug', 'Received:', text)
+  await ctx.sendChatAction('typing')
+
+  try {
+    const response = await model.call(text)
+    await ctx.reply(response)
+  } catch (error) {
+    log('error', error)
+    const message = JSON.stringify(
+      (error as any)?.response?.data?.error ?? (error as any)?.response ?? 'Unable to extract error'
+    )
+    log('error', message)
+    await ctx.reply('There was an error while talking to OpenAI. Error: ' + message)
+  }
 })
 
 bot.launch()
