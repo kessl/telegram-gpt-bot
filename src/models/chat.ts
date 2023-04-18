@@ -53,7 +53,6 @@ export class Model {
 
   public async call(input: string) {
     const output = await this.chain.call({ input })
-    return
     return output.response
   }
 }

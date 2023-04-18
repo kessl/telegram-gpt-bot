@@ -34,13 +34,10 @@ bot.on(message(), async (ctx) => {
   try {
     const response = await model.call(text)
     await ctx.reply(response)
-  } catch (error) {
+  } catch (error: any) {
     log('error', error)
-    const message = JSON.stringify(
-      (error as any)?.response?.data?.error ?? (error as any)?.response ?? 'Unable to extract error'
-    )
-    log('error', message)
-    await ctx.reply('There was an error while talking to OpenAI. Error: ' + message)
+    const message = JSON.stringify(error?.response?.data?.error ?? error?.message, null, 2)
+    await ctx.reply(`There was an error while processing your message.\n\n<pre>${message}</pre>`, { parse_mode: 'HTML' })
   }
 })
 
