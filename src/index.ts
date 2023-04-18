@@ -3,7 +3,7 @@ dotenv.config()
 import { Telegraf } from 'telegraf'
 import { message } from 'telegraf/filters'
 import log from './utils/log'
-import { Model } from './models/chat'
+import { Agent } from './agent'
 
 if (!process.env.TELEGRAM_TOKEN) {
   log('fatal', 'Missing environment variable TELEGRAM_TOKEN.')
@@ -20,7 +20,7 @@ bot.help((ctx) => {
   ctx.reply("I'm a GPT-3.5 language model. I can google and I understand voice messages. Ask me anything")
 })
 
-const model = new Model()
+const agent = new Agent()
 bot.on(message(), async (ctx) => {
   const text = (ctx.message as any).text
   if (!text) {
@@ -32,7 +32,7 @@ bot.on(message(), async (ctx) => {
   await ctx.sendChatAction('typing')
 
   try {
-    const response = await model.call(text)
+    const response = await agent.call(text)
     await ctx.reply(response)
   } catch (error: any) {
     log('error', error)
