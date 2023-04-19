@@ -7,6 +7,7 @@ import { Agent } from './agent'
 import { existsSync, mkdirSync } from 'fs'
 import { downloadVoiceFile, postToWhisper } from './lib/voice'
 
+
 if (!process.env.TELEGRAM_TOKEN) {
   log('fatal', 'Missing environment variable TELEGRAM_TOKEN.')
   process.exit()
@@ -18,17 +19,32 @@ if (!existsSync(workDir)) {
 }
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN)
-
-bot.start((ctx) => {
-  ctx.reply("GREETINGS FELLOW HUMAN\n\nI'm a GPT-3.5 language model. I can google and I understand voice messages. Ask me anything")
-})
-
-bot.help((ctx) => {
-  ctx.reply("I'm a GPT-3.5 language model. I can google and I understand voice messages. Ask me anything")
-})
-
 const agent = new Agent()
-bot.on(message('text'), async (ctx) => {
+const helpMessage = 'I\'m a GPT-3.5 language model. I can google and I understand voice messages. Ask me anything'
+
+bot.start(ctx => {
+  ctx.reply(`GREETINGS FELLOW HUMAN\n\n${helpMessage}`)
+})
+
+bot.help(ctx => {
+  ctx.reply(helpMessage)
+})
+
+bot.command('image', async ctx => {
+  const prompt = ctx.message.text.replace('/image', '')
+  await ctx.sendChatAction('typing')
+  try {
+    const response = await agent.openai.createImage({ prompt })
+    response.data.data.forEach(data => ctx.replyWithPhoto({ url: data.url! }))
+    log('debug', response.data)
+  } catch (error: any) {
+    log('error', error)
+    const message = JSON.stringify(error?.response?.data?.error ?? error?.message, null, 2)
+    await ctx.reply(`There was an error generating image.\n\n<pre>${message}</pre>`, { parse_mode: 'HTML' })
+  }
+})
+
+bot.on(message('text'), async ctx => {
   const text = ctx.message.text
   log('debug', 'Received:', text)
   await ctx.sendChatAction('typing')
@@ -43,7 +59,7 @@ bot.on(message('text'), async (ctx) => {
   }
 })
 
-bot.on(message('voice'), async (ctx) => {
+bot.on(message('voice'), async ctx => {
   const voice = ctx.message.voice
   await ctx.sendChatAction('typing')
 

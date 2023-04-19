@@ -4,7 +4,8 @@ TODO:
 - [x] talk to OpenAI GPT API
 - [x] Google search using LangchainJS
 - [x] speech-to-text using OpenAI Whisper API
-- [ ] image generation
+- [x] image generation
+- [ ] multiple images, image variations & image editing
 - [ ] transparency about data sources & actions taken
 - [ ] response streaming
 
