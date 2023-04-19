@@ -74,7 +74,7 @@ bot.on(message('voice'), async ctx => {
   }
 
   const transcription = await postToWhisper(agent.openai, localFilePath)
-  log('info', 'Received transcript:', transcription)
+  log('debug', 'Received transcript:', transcription)
   await ctx.reply(`Transcription: ${transcription}`)
   await ctx.sendChatAction('typing')
 
