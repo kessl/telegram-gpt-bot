@@ -1,5 +1,7 @@
 FROM node:18.16.0-bullseye-slim
-RUN apt update && apt install ffmpeg
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update && apt install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 COPY . .
 RUN yarn
