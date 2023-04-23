@@ -1,5 +1,5 @@
 FROM node:18.16.0-bullseye-slim
-RUN apk add --update ffmpeg
+RUN apt update && apt install ffmpeg
 
 COPY . .
 RUN yarn
