@@ -1,9 +1,11 @@
 import { ChatOpenAI } from "langchain/chat_models/openai"
 import { Configuration, OpenAIApi } from "openai"
-import { AgentExecutor, Tool, initializeAgentExecutor } from "langchain/agents"
+import { AgentExecutor, Tool, initializeAgentExecutorWithOptions } from "langchain/agents"
 import { BufferMemory } from "langchain/memory"
 import { googleTool } from "./lib/tools/google"
 import log from "./utils/log"
+import { CallbackManager } from "langchain/callbacks"
+import { CallbackHandler } from "./lib/callbackHandler"
 
 const openAIApiKey = process.env.OPENAI_API_KEY!
 
@@ -12,14 +14,17 @@ if (!process.env.OPENAI_API_KEY) {
   process.exit()
 }
 
+const callbackManager = new CallbackManager()
+callbackManager.addHandler(new CallbackHandler())
+
 const params = {
-  verbose: true,
   temperature: 1,
   openAIApiKey,
   modelName: process.env.OPENAI_MODEL || "gpt-4",
   maxConcurrency: 1,
   maxTokens: 1000,
   maxRetries: 5,
+  callbackManager,
 }
 
 export class Agent {
@@ -40,17 +45,15 @@ export class Agent {
 
   public async call(input: string) {
     if (!this.executor) {
-      this.executor = await initializeAgentExecutor(
-        this.tools,
-        this.model,
-        "chat-conversational-react-description",
-        true
-      )
-      this.executor.memory = new BufferMemory({
-        returnMessages: true,
-        memoryKey: "chat_history",
-        inputKey: "input",
+      this.executor = await initializeAgentExecutorWithOptions(this.tools, this.model, {
+        agentType: "chat-conversational-react-description",
+        callbackManager,
       })
+      // this.executor.memory = new BufferMemory({
+      //   returnMessages: true,
+      //   memoryKey: "chat_history",
+      //   inputKey: "input",
+      // })
     }
 
     const response = await this.executor.call({ input })

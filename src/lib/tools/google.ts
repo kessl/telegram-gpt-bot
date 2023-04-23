@@ -15,7 +15,6 @@ export const googleTool = new DynamicTool({
           // add additional parameters here, see https://moz.com/blog/the-ultimate-guide-to-the-google-search-parameters and https://www.seoquake.com/blog/google-search-param/
         },
       })
-      log('debug', { googleResponse: response })
 
       return JSON.stringify({
         results: response.results,

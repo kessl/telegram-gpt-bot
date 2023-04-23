@@ -8,9 +8,15 @@ const levels = {
 }
 const LOG_LEVEL = (process.env.LOG_LEVEL || 'info') as keyof typeof levels
 
+const inspectOptions = {
+  showHidden: false,
+  depth: null,
+  colors: true
+}
+
 function inspectMessage(message: any) {
   if (typeof message === 'object') {
-    return inspect(message)
+    return inspect(message, inspectOptions)
   }
   return message
 }

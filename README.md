@@ -7,7 +7,9 @@ TODO:
 - [x] image generation
 - [ ] multiple images, image variations & image editing
 - [ ] transparency about data sources & actions taken
-- [ ] response streaming
+- [ ] better search with source summary
+- [ ] adjustable temperature
+- [ ] per user config
 
 ---
 
