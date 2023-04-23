@@ -1,50 +1,39 @@
 import { ChatOpenAI } from "langchain/chat_models/openai"
-import { Configuration, OpenAIApi } from "openai"
+
 import { AgentExecutor, Tool, initializeAgentExecutorWithOptions } from "langchain/agents"
 import { googleTool } from "./lib/tools/google"
 import log from "./utils/log"
-import { CallbackManager } from "langchain/callbacks"
-import { CallbackHandler } from "./lib/callbackHandler"
 
 if (!process.env.OPENAI_API_KEY) {
   log('fatal', 'Missing environment variable OPENAI_API_KEY.')
   process.exit()
 }
 
-const callbackManager = new CallbackManager()
-callbackManager.addHandler(new CallbackHandler())
-
-const params = {
-  temperature: 1,
-  openAIApiKey: process.env.OPENAI_API_KEY,
-  modelName: process.env.OPENAI_MODEL || "gpt-4",
-  maxConcurrency: 1,
-  maxTokens: 1000,
-  maxRetries: 5,
-  callbackManager,
-}
-
 export class Agent {
   public tools: Tool[]
   public executor?: AgentExecutor
   public model: ChatOpenAI
-  public openai: OpenAIApi
+  params: any
 
-  constructor() {
-    const configuration = new Configuration({
-      apiKey: process.env.OPENAI_API_KEY,
-    })
+  constructor(baseParams: any) {
+    const params = {
+      temperature: 1,
+      modelName: process.env.OPENAI_MODEL || "gpt-4",
+      maxConcurrency: 1,
+      maxTokens: 1000,
+      maxRetries: 5,
+    }
 
+    this.params = { ...baseParams, ...params }
     this.tools = [googleTool]
-    this.model = new ChatOpenAI(params, configuration)
-    this.openai = new OpenAIApi(configuration)
+    this.model = new ChatOpenAI(this.params)
   }
 
   public async call(input: string) {
     if (!this.executor) {
       this.executor = await initializeAgentExecutorWithOptions(this.tools, this.model, {
         agentType: "chat-conversational-react-description",
-        callbackManager,
+        callbackManager: this.params.callbackManager,
       })
       // TODO: history per user
       // this.executor.memory = new BufferMemory({

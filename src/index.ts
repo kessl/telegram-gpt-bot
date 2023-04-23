@@ -7,6 +7,8 @@ import { Agent } from './agent'
 import { existsSync, mkdirSync } from 'fs'
 import { downloadVoiceFile, postToWhisper } from './lib/voice'
 import { summarize } from './summarize'
+import { requestContext, sendCostInfo } from './lib/request'
+import { Configuration, OpenAIApi } from "openai"
 
 
 if (!process.env.TELEGRAM_TOKEN) {
@@ -20,8 +22,8 @@ if (!existsSync(workDir)) {
 }
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN)
-const agent = new Agent()
-const helpMessage = 'I\'m a GPT-3.5 language model. I can google and I understand voice messages. Ask me anything'
+const helpMessage = 'I\'m a GPT-3.5 language model. I can google and I understand voice messages. Ask me anything, or send a file to summarize'
+
 
 bot.start(ctx => {
   ctx.reply(`GREETINGS FELLOW HUMAN\n\n${helpMessage}`)
@@ -34,10 +36,14 @@ bot.help(ctx => {
 bot.command('image', async ctx => {
   const prompt = ctx.message.text.replace('/image', '')
   await ctx.sendChatAction('typing')
+
   try {
-    const response = await agent.openai.createImage({ prompt })
+    const params = requestContext()
+    const openai = new OpenAIApi(new Configuration({ apiKey: params.openAIApiKey }))
+    const response = await openai.createImage({ prompt })
     response.data.data.forEach(data => ctx.replyWithPhoto({ url: data.url! }))
     log('debug', response.data)
+    await sendCostInfo(ctx, { model: 'image', count: response.data.data.length })
   } catch (error: any) {
     log('error', error)
     const message = JSON.stringify(error?.response?.data?.error ?? error?.message, null, 2)
@@ -51,8 +57,11 @@ bot.on(message('text'), async ctx => {
   await ctx.sendChatAction('typing')
 
   try {
+    const params = requestContext()
+    const agent = new Agent(params)
     const response = await agent.call(text)
     await ctx.reply(response)
+    await sendCostInfo(ctx, { model: agent.model.modelName as any, count: (params.callbackManager.handlers[0] as any).totalTokens })
   } catch (error: any) {
     log('error', error)
     const message = JSON.stringify(error?.response?.data?.error ?? error?.message, null, 2)
@@ -74,11 +83,14 @@ bot.on(message('voice'), async ctx => {
     return
   }
 
-  const transcription = await postToWhisper(agent.openai, localFilePath)
+  const params = requestContext()
+  const openai = new OpenAIApi(new Configuration({ apiKey: params.openAIApiKey }))
+  const transcription = await postToWhisper(openai, localFilePath)
   log('debug', 'Received transcript:', transcription)
   await ctx.reply(`Transcription: ${transcription}`)
   await ctx.sendChatAction('typing')
 
+  const agent = new Agent(params)
   let response
   try {
     response = await agent.call(transcription)
@@ -90,14 +102,17 @@ bot.on(message('voice'), async ctx => {
 
   log('debug', response)
   await ctx.reply(response)
+  await sendCostInfo(ctx, { model: agent.model.modelName as any, count: (params.callbackManager.handlers[0] as any).totalTokens })
 })
 
 bot.on(message('document'), async (ctx) => {
   await ctx.reply('Summarizing document...')
   await ctx.sendChatAction('typing')
   try {
-    const summary = await summarize(ctx.update.message.document.file_id, workDir, bot)
-    ctx.reply(summary.toString())
+    const params = requestContext()
+    const summary = await summarize(ctx.update.message.document.file_id, workDir, bot, params)
+    await ctx.reply(summary.toString())
+    await sendCostInfo(ctx, { model: 'gpt-3.5-turbo', count: (params.callbackManager.handlers[0] as any).totalTokens })
   } catch (error: any) {
     log('error', error)
     const message = JSON.stringify(error?.response?.data?.error ?? error?.message, null, 2)
