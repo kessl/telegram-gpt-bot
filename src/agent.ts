@@ -1,13 +1,10 @@
 import { ChatOpenAI } from "langchain/chat_models/openai"
 import { Configuration, OpenAIApi } from "openai"
 import { AgentExecutor, Tool, initializeAgentExecutorWithOptions } from "langchain/agents"
-import { BufferMemory } from "langchain/memory"
 import { googleTool } from "./lib/tools/google"
 import log from "./utils/log"
 import { CallbackManager } from "langchain/callbacks"
 import { CallbackHandler } from "./lib/callbackHandler"
-
-const openAIApiKey = process.env.OPENAI_API_KEY!
 
 if (!process.env.OPENAI_API_KEY) {
   log('fatal', 'Missing environment variable OPENAI_API_KEY.')
@@ -19,7 +16,7 @@ callbackManager.addHandler(new CallbackHandler())
 
 const params = {
   temperature: 1,
-  openAIApiKey,
+  openAIApiKey: process.env.OPENAI_API_KEY,
   modelName: process.env.OPENAI_MODEL || "gpt-4",
   maxConcurrency: 1,
   maxTokens: 1000,
@@ -35,7 +32,7 @@ export class Agent {
 
   constructor() {
     const configuration = new Configuration({
-      apiKey: openAIApiKey,
+      apiKey: process.env.OPENAI_API_KEY,
     })
 
     this.tools = [googleTool]
@@ -49,6 +46,7 @@ export class Agent {
         agentType: "chat-conversational-react-description",
         callbackManager,
       })
+      // TODO: history per user
       // this.executor.memory = new BufferMemory({
       //   returnMessages: true,
       //   memoryKey: "chat_history",

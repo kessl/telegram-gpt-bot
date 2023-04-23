@@ -6,6 +6,8 @@ TODO:
 - [x] speech-to-text using OpenAI Whisper API
 - [x] image generation
 - [ ] multiple images, image variations & image editing
+- [ ] summarize documents
+- [ ] report token usage
 - [ ] transparency about data sources & actions taken
 - [ ] better search with source summary
 - [ ] adjustable temperature

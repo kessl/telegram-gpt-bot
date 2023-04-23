@@ -6,6 +6,7 @@ import log from './utils/log'
 import { Agent } from './agent'
 import { existsSync, mkdirSync } from 'fs'
 import { downloadVoiceFile, postToWhisper } from './lib/voice'
+import { summarize } from './summarize'
 
 
 if (!process.env.TELEGRAM_TOKEN) {
@@ -89,6 +90,19 @@ bot.on(message('voice'), async ctx => {
 
   log('debug', response)
   await ctx.reply(response)
+})
+
+bot.on(message('document'), async (ctx) => {
+  await ctx.reply('Summarizing document...')
+  await ctx.sendChatAction('typing')
+  try {
+    const summary = await summarize(ctx.update.message.document.file_id, workDir, bot)
+    ctx.reply(summary.toString())
+  } catch (error: any) {
+    log('error', error)
+    const message = JSON.stringify(error?.response?.data?.error ?? error?.message, null, 2)
+    await ctx.reply(`There was an error while generating summary.\n\n<pre>${message}</pre>`, { parse_mode: 'HTML' })
+  }
 })
 
 bot.launch()
